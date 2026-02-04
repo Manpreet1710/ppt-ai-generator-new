@@ -67,6 +67,7 @@
   },
   "devDependencies": {
     "@types/babel__standalone": "^7.1.9",
+    "@types/d3": "^7.4.3",
     "@types/node": "^20",
     "@types/prismjs": "^1.26.5",
     "@types/puppeteer": "^5.4.7",
