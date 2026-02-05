@@ -11,6 +11,8 @@ const __dirname = dirname(__filename);
 const fastapiDir = join(__dirname, "servers/fastapi");
 const nextjsDir = join(__dirname, "servers/nextjs");
 
+
+
 const args = process.argv.slice(2);
 const hasDevArg = args.includes("--dev") || args.includes("-d");
 const isDev = hasDevArg;

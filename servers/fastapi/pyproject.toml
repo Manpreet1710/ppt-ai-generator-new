@@ -15,6 +15,8 @@ dependencies = [
     "docling>=2.43.0",
     "fastapi[standard]>=0.116.1",
     "fastmcp>=2.11.0",
+    "firebase-admin",
+    "firebase-functions",
     "google-genai>=1.28.0",
     "nltk>=3.9.1",
     "openai>=1.98.0",
