@@ -2,6 +2,12 @@ import { getHeader, getHeaderForFormData } from "./header";
 import { IconSearch, ImageGenerate, ImageSearch, PreviousGeneratedImagesResponse } from "./params";
 import { ApiResponseHandler } from "./api-error-handler";
 
+import { getIdToken } from "@/firebase";
+const authToken = await getIdToken();
+console.log(authToken);
+
+
+
 export class PresentationGenerationApi {
   static async uploadDoc(documents: File[]) {
     const formData = new FormData();

@@ -3,9 +3,7 @@ import { createSlice, PayloadAction } from "@reduxjs/toolkit";
 
 interface PresentationGenUploadState {
   config: PresentationConfig | null;
-  
   files: any;
-
 }
 
 const initialState: PresentationGenUploadState = {
@@ -25,7 +23,6 @@ export const presentationGenUploadSlice = createSlice({
       state.config = payload.config!;
       state.files = payload.files!;
     },
-   
   },
 });
 

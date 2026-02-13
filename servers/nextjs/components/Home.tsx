@@ -1,267 +1,211 @@
 "use client";
-import { useState, useEffect, useMemo } from "react";
-import { useRouter } from "next/navigation";
-import { toast } from "sonner";
-import { Loader2, Download, CheckCircle } from "lucide-react";
-import { useSelector } from "react-redux";
-import { RootState } from "@/store/store";
-import { handleSaveLLMConfig } from "@/utils/storeHelpers";
-import LLMProviderSelection from "./LLMSelection";
-import {
-  checkIfSelectedOllamaModelIsPulled,
-  pullOllamaModel,
-} from "@/utils/providerUtils";
-import { LLMConfig } from "@/types/llm_config";
-import { trackEvent, MixpanelEvent } from "@/utils/mixpanel";
-import { usePathname } from "next/navigation";
-
-// Button state interface
-interface ButtonState {
-  isLoading: boolean;
-  isDisabled: boolean;
-  text: string;
-  showProgress: boolean;
-  progressPercentage?: number;
-  status?: string;
-}
-
-export default function Home() {
-  const router = useRouter();
-  const pathname = usePathname();
-  const config = useSelector((state: RootState) => state.userConfig);
-  const [llmConfig, setLlmConfig] = useState<LLMConfig>(config.llm_config);
-
-  const [downloadingModel, setDownloadingModel] = useState<{
-    name: string;
-    size: number | null;
-    downloaded: number | null;
-    status: string;
-    done: boolean;
-  } | null>(null);
-  const [showDownloadModal, setShowDownloadModal] = useState<boolean>(false);
-  const [buttonState, setButtonState] = useState<ButtonState>({
-    isLoading: false,
-    isDisabled: false,
-    text: "Save Configuration",
-    showProgress: false
-  });
-
-  const canChangeKeys = config.can_change_keys;
-  const downloadProgress = useMemo(() => {
-    if (downloadingModel && downloadingModel.downloaded !== null && downloadingModel.size !== null) {
-      return Math.round((downloadingModel.downloaded / downloadingModel.size) * 100);
-    }
-    return 0;
-  }, [downloadingModel?.downloaded, downloadingModel?.size]);
-
-  const handleSaveConfig = async () => {
-    trackEvent(MixpanelEvent.Home_SaveConfiguration_Button_Clicked, { pathname });
-    try {
-      setButtonState(prev => ({
-        ...prev,
-        isLoading: true,
-        isDisabled: true,
-        text: "Saving Configuration..."
-      }));
-      // API: save config
-      trackEvent(MixpanelEvent.Home_SaveConfiguration_API_Call);
-      // API CALL: save config
-      await handleSaveLLMConfig(llmConfig);
-
-      if (llmConfig.LLM === "ollama" && llmConfig.OLLAMA_MODEL) {
-        // API: check model pulled
-        trackEvent(MixpanelEvent.Home_CheckOllamaModelPulled_API_Call);
-        const isPulled = await checkIfSelectedOllamaModelIsPulled(llmConfig.OLLAMA_MODEL);
-        if (!isPulled) {
-          setShowDownloadModal(true);
-          // API: download model
-          trackEvent(MixpanelEvent.Home_DownloadOllamaModel_API_Call);
-          await handleModelDownload();
-        }
-      }
-      toast.info("Configuration saved successfully");
-      setButtonState(prev => ({
-        ...prev,
-        isLoading: false,
-        isDisabled: false,
-        text: "Save Configuration"
-      }));
-      // Track navigation from -> to
-      trackEvent(MixpanelEvent.Navigation, { from: pathname, to: "/upload" });
-      router.push("/upload");
-    } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Failed to save configuration");
-      setButtonState(prev => ({
-        ...prev,
-        isLoading: false,
-        isDisabled: false,
-        text: "Save Configuration"
-      }));
-    }
-  };
-
-  const handleModelDownload = async () => {
-    try {
-      await pullOllamaModel(llmConfig.OLLAMA_MODEL!, setDownloadingModel);
-    }
-    finally {
-      setDownloadingModel(null);
-      setShowDownloadModal(false);
-    }
-  };
+import React from 'react';
+import Link from 'next/link';
+import { ChevronRight, Zap, Image as ImageIcon, FileText, Bot } from 'lucide-react';
 
 
-  useEffect(() => {
-    if (downloadingModel && downloadingModel.downloaded !== null && downloadingModel.size !== null) {
-      const percentage = Math.round(((downloadingModel.downloaded / downloadingModel.size) * 100));
-      setButtonState({
-        isLoading: true,
-        isDisabled: true,
-        text: `Downloading Model (${percentage}%)`,
-        showProgress: true,
-        progressPercentage: percentage,
-        status: downloadingModel.status
-      });
-    }
 
-    if (downloadingModel && downloadingModel.done) {
-      setTimeout(() => {
-        setShowDownloadModal(false);
-        setDownloadingModel(null);
-        toast.info("Model downloaded successfully!");
-      }, 2000);
-    }
-  }, [downloadingModel]);
+// Logo Component
+const Logo = () => (
+    <Link href="/" aria-label="AI PPT Generator Home">
+        <img src="/content-tool-logo.webp" alt="AI PPT Generator Logo" className="h-10 w-auto" />
+    </Link>
+);
 
-  useEffect(() => {
-    if (!canChangeKeys) {
-      router.push("/upload");
-    }
-  }, [canChangeKeys, router]);
-
-  if (!canChangeKeys) {
-    return null;
-  }
-
-  return (
-    <div className="h-screen bg-gradient-to-b font-instrument_sans from-gray-50 to-white flex flex-col overflow-hidden">
-      <main className="flex-1 container mx-auto px-4 max-w-3xl overflow-hidden flex flex-col">
-        {/* Branding Header */}
-        <div className="text-center mb-2 mt-4 flex-shrink-0">
-          <div className="flex items-center justify-center gap-3 mb-2">
-            <img src="/Logo.png" alt="Presenton Logo" className="h-12" />
-          </div>
-          <p className="text-gray-600 text-sm">
-            Open-source AI presentation generator
-          </p>
-        </div>
-
-        {/* Main Configuration Card */}
-        <div className="flex-1 overflow-hidden">
-          <LLMProviderSelection
-            initialLLMConfig={llmConfig}
-            onConfigChange={setLlmConfig}
-            buttonState={buttonState}
-            setButtonState={setButtonState}
-          />
-        </div>
-      </main>
-
-      {/* Download Progress Modal */}
-      {showDownloadModal && downloadingModel && (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-white/95 backdrop-blur-md rounded-xl shadow-2xl max-w-md w-full p-6 relative">
-            {/* Modal Content */}
-            <div className="text-center">
-              {/* Icon */}
-              <div className="mb-4">
-                {downloadingModel.done ? (
-                  <CheckCircle className="w-12 h-12 text-green-600 mx-auto" />
-                ) : (
-                  <Download className="w-12 h-12 text-blue-600 mx-auto animate-pulse" />
-                )}
-              </div>
-
-              {/* Title */}
-              <h3 className="text-lg font-semibold text-gray-900 mb-2">
-                {downloadingModel.done ? "Download Complete!" : "Downloading Model"}
-              </h3>
-
-              {/* Model Name */}
-              <p className="text-sm text-gray-600 mb-6">
-                {llmConfig.OLLAMA_MODEL}
-              </p>
-
-              {/* Progress Bar */}
-              {downloadProgress > 0 && (
-                <div className="mb-4">
-                  <div className="w-full bg-gray-200 rounded-full h-3 overflow-hidden">
-                    <div
-                      className="bg-blue-600 h-3 rounded-full transition-all duration-300 ease-out"
-                      style={{ width: `${downloadProgress}%` }}
-                    />
-                  </div>
-                  <p className="text-sm text-gray-600 mt-2">
-                    {downloadProgress}% Complete
-                  </p>
+const HomePage = () => {
+    return (
+        <div className="bg-white text-gray-800 font-sans">
+            {/* Header */}
+            <header className="fixed top-0 left-0 right-0 bg-white/80 backdrop-blur-md z-50 border-b border-gray-200">
+                <div className="container mx-auto px-6 py-4 flex justify-between items-center">
+                    <Logo />
+                    <nav className="hidden md:flex items-center space-x-8">
+                        <Link href="#home" className="text-gray-600 hover:text-blue-600 transition-colors">Home</Link>
+                        <Link href="#features" className="text-gray-600 hover:text-blue-600 transition-colors">Features</Link>
+                        <Link href="#pricing" className="text-gray-600 hover:text-blue-600 transition-colors">Pricing</Link>
+                        <Link href="/login" className="text-gray-600 hover:text-blue-600 transition-colors">Login</Link>
+                    </nav>
+                    <Link href="/dashboard" className="bg-blue-600 text-white font-semibold px-6 py-2 rounded-lg hover:bg-blue-700 transition-all duration-300 shadow-sm">
+                        Dashboard
+                    </Link>
                 </div>
-              )}
+            </header>
 
-              {/* Status */}
-              {downloadingModel.status && (
-                <div className="flex items-center justify-center gap-2 mb-4">
-                  <CheckCircle className="w-4 h-4 text-green-600" />
-                  <span className="text-sm font-medium text-green-700 capitalize">
-                    {downloadingModel.status}
-                  </span>
-                </div>
-              )}
+            <main>
+                {/* Hero Section */}
+                <section id="home" className="pt-32 pb-20 text-center bg-gray-50">
+                    <div className="container mx-auto px-6">
+                        <h1 className="text-5xl md:text-3xl font-extrabold text-gray-900 leading-tight">
+                            Generate Professional Presentations Instantly with AI
+                        </h1>
+                        
+                        <p className="mt-6 max-w-2xl mx-auto text-lg text-gray-500">
+                            Say goodbye to tedious slide creation. Our AI-powered tool helps you design, write, and format professional presentations effortlessly, so you can focus on what truly matters: your message.
+                        </p>
+                        <div className="mt-10 flex justify-center items-center space-x-4">
+                            <Link href="/dashboard" className="bg-blue-600 text-white font-bold px-8 py-4 rounded-lg text-lg hover:bg-blue-700 transition-all duration-300 shadow-lg flex items-center">
+                                Start Creating <ChevronRight className="w-5 h-5 ml-2" />
+                            </Link>
+                            <Link href="#pricing" className="bg-white text-blue-600 font-bold px-8 py-4 rounded-lg text-lg border border-gray-300 hover:bg-gray-100 transition-all duration-300 shadow-lg">
+                                View Pricing
+                            </Link>
+                        </div>
+                    </div>
+                </section>
 
-              {/* Status Message */}
-              {downloadingModel.status && downloadingModel.status !== "pulled" && (
-                <div className="text-xs text-gray-500">
-                  {downloadingModel.status === "downloading" && "Downloading model files..."}
-                  {downloadingModel.status === "verifying" && "Verifying model integrity..."}
-                  {downloadingModel.status === "pulling" && "Pulling model from registry..."}
-                </div>
-              )}
+                {/* Features Section */}
+                <section id="features" className="py-20 bg-white">
+                    <div className="container mx-auto px-6 text-center">
+                        <h2 className="text-4xl font-bold text-gray-900">Features That Set You Apart</h2>
+                        <p className="mt-4 text-lg text-gray-600 max-w-3xl mx-auto">
+                            Everything you need to create compelling presentations, powered by cutting-edge AI.
+                        </p>
+                        <div className="mt-16 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-12">
+                            <div className="feature-card">
+                                <Zap className="w-12 h-12 text-blue-600" />
+                                <h3 className="text-xl font-semibold mt-4">AI-Generated Slides</h3>
+                                <p className="mt-2 text-gray-500">Generate entire presentations from a single prompt or document.</p>
+                            </div>
+                            <div className="feature-card">
+                                <ImageIcon className="w-12 h-12 text-blue-600" />
+                                <h3 className="text-xl font-semibold mt-4">Automatic Image Sourcing</h3>
+                                <p className="mt-2 text-gray-500">AI finds and suggests relevant, high-quality images for your slides.</p>
+                            </div>
+                            <div className="feature-card">
+                                <FileText className="w-12 h-12 text-blue-600" />
+                                <h3 className="text-xl font-semibold mt-4">Export to PPT/PDF</h3>
+                                <p className="mt-2 text-gray-500">Instantly export your work into popular formats with one click.</p>
+                            </div>
+                            <div className="feature-card">
+                                <Bot className="w-12 h-12 text-blue-600" />
+                                <h3 className="text-xl font-semibold mt-4">Smart Layouts</h3>
+                                <p className="mt-2 text-gray-500">Our AI intelligently designs beautiful and professional slide layouts.</p>
+                            </div>
+                        </div>
+                    </div>
+                </section>
 
-              {/* Download Info */}
-              {downloadingModel.downloaded && downloadingModel.size && (
-                <div className="mt-4 p-3 bg-gray-50 rounded-lg">
-                  <div className="flex justify-between text-xs text-gray-600">
-                    <span>Downloaded: {(downloadingModel.downloaded / 1024 / 1024).toFixed(1)} MB</span>
-                    <span>Total: {(downloadingModel.size / 1024 / 1024).toFixed(1)} MB</span>
-                  </div>
+                {/* How It Works Section */}
+                <section className="py-20 bg-gray-50">
+                    <div className="container mx-auto px-6 text-center">
+                        <h2 className="text-4xl font-bold text-gray-900">Create in 3 Simple Steps</h2>
+                        <div className="mt-16 grid grid-cols-1 md:grid-cols-3 gap-12">
+                            <div className="step-card">
+                                <div className="step-number">1</div>
+                                <h3 className="text-xl font-semibold mt-4">Provide a Prompt</h3>
+                                <p className="mt-2 text-gray-500">Start with a topic, an outline, or an existing document.</p>
+                            </div>
+                            <div className="step-card">
+                                <div className="step-number">2</div>
+                                <h3 className="text-xl font-semibold mt-4">Let AI Do the Work</h3>
+                                <p className="mt-2 text-gray-500">Our AI generates the content, design, and imagery for you.</p>
+                            </div>
+                            <div className="step-card">
+                                <div className="step-number">3</div>
+                                <h3 className="text-xl font-semibold mt-4">Export & Present</h3>
+                                <p className="mt-2 text-gray-500">Download your presentation as a PPTX or PDF and impress your audience.</p>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                {/* Pricing Section */}
+                <section id="pricing" className="py-20 bg-white">
+                    <div className="container mx-auto px-6 text-center">
+                        <h2 className="text-4xl font-bold text-gray-900">Simple, Transparent Pricing</h2>
+                        <p className="mt-4 text-lg text-gray-600 max-w-3xl mx-auto">Choose the plan that's right for you and your team.</p>
+                        <div className="mt-16 grid grid-cols-1 md:grid-cols-3 gap-8 max-w-6xl mx-auto">
+                            
+                            {/* Free Plan */}
+                            <div className="pricing-card">
+                                <h3 className="text-2xl font-bold text-gray-900">Free</h3>
+                                <p className="mt-4 text-5xl font-extrabold text-gray-900">$0<span className="text-lg font-medium text-gray-500">/month</span></p>
+                                <p className="mt-2 text-gray-500">For individuals getting started</p>
+                                <ul className="mt-8 space-y-4 text-left">
+                                    <li className="flex items-center"><Check className="w-5 h-5 text-green-500 mr-3" />5 Presentations/month</li>
+                                    <li className="flex items-center"><Check className="w-5 h-5 text-green-500 mr-3" />Basic AI Features</li>
+                                    <li className="flex items-center"><Check className="w-5 h-5 text-green-500 mr-3" />PDF Exports</li>
+                                    <li className="flex items-center"><Check className="w-5 h-5 text-green-500 mr-3" />Standard Support</li>
+                                </ul>
+                                <button className="w-full mt-10 bg-white text-blue-600 font-bold py-3 rounded-lg border border-gray-300 hover:bg-gray-100 transition-all duration-300">Get Started Free</button>
+                            </div>
+
+                            {/* Pro Plan - Most Popular */}
+                            <div className="pricing-card border-blue-600 ring-2 ring-blue-600 relative">
+                                <span className="absolute top-0 -translate-y-1/2 bg-blue-600 text-white text-sm font-bold px-4 py-1 rounded-full">MOST POPULAR</span>
+                                <h3 className="text-2xl font-bold text-gray-900">Pro</h3>
+                                <p className="mt-4 text-5xl font-extrabold text-gray-900">$15<span className="text-lg font-medium text-gray-500">/month</span></p>
+                                <p className="mt-2 text-gray-500">For professionals and power users</p>
+                                <ul className="mt-8 space-y-4 text-left">
+                                    <li className="flex items-center"><Check className="w-5 h-5 text-green-500 mr-3" />Unlimited Presentations</li>
+                                    <li className="flex items-center"><Check className="w-5 h-5 text-green-500 mr-3" />Advanced AI Features</li>
+                                    <li className="flex items-center"><Check className="w-5 h-5 text-green-500 mr-3" />PPTX & PDF Exports</li>
+                                    <li className="flex items-center"><Check className="w-5 h-5 text-green-500 mr-3" />Priority Support</li>
+                                </ul>
+                                <button className="w-full mt-10 bg-blue-600 text-white font-bold py-3 rounded-lg hover:bg-blue-700 transition-all duration-300">Select Plan</button>
+                            </div>
+
+                            {/* Business Plan */}
+                            <div className="pricing-card">
+                                <h3 className="text-2xl font-bold text-gray-900">Business</h3>
+                                <p className="mt-4 text-5xl font-extrabold text-gray-900">$29<span className="text-lg font-medium text-gray-500">/month</span></p>
+                                <p className="mt-2 text-gray-500">For teams and enterprises</p>
+                                <ul className="mt-8 space-y-4 text-left">
+                                    <li className="flex items-center"><Check className="w-5 h-5 text-green-500 mr-3" />Everything in Pro</li>
+                                    <li className="flex items-center"><Check className="w-5 h-5 text-green-500 mr-3" />Team Collaboration</li>
+                                    <li className="flex items-center"><Check className="w-5 h-5 text-green-500 mr-3" />Custom Branding</li>
+                                    <li className="flex items-center"><Check className="w-5 h-5 text-green-500 mr-3" />Dedicated Support</li>
+                                </ul>
+                                <button className="w-full mt-10 bg-white text-blue-600 font-bold py-3 rounded-lg border border-gray-300 hover:bg-gray-100 transition-all duration-300">Select Plan</button>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                {/* FAQ Section */}
+                <section className="py-20 bg-gray-50">
+                    <div className="container mx-auto px-6 max-w-3xl">
+                        <h2 className="text-4xl font-bold text-center text-gray-900">Frequently Asked Questions</h2>
+                        <div className="mt-12 space-y-8">
+                            <div className="faq-item">
+                                <h3 className="text-xl font-semibold">How does the AI generate presentations?</h3>
+                                <p className="mt-2 text-gray-600">Our tool uses advanced language models to understand your prompt, structure the content, write the text, and design the slides, all in a cohesive and professional manner.</p>
+                            </div>
+                            <div className="faq-item">
+                                <h3 className="text-xl font-semibold">Can I customize the generated slides?</h3>
+                                <p className="mt-2 text-gray-600">Yes! While our AI provides a strong first draft, you have full control to edit text, change images, and adjust layouts before exporting your final presentation.</p>
+                            </div>
+                             <div className="faq-item">
+                                <h3 className="text-xl font-semibold">What formats can I export to?</h3>
+                                <p className="mt-2 text-gray-600">You can instantly download your presentations as either a Microsoft PowerPoint file (.pptx) or a PDF, ready for sharing or presenting.</p>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+            </main>
+
+            {/* Footer */}
+            <footer className="bg-gray-800 text-white py-12">
+                <div className="container mx-auto px-6 text-center">
+                    <Logo />
+                    <nav className="mt-8 flex justify-center space-x-8">
+                        <Link href="#home" className="hover:text-blue-400">Home</Link>
+                        <Link href="#pricing" className="hover:text-blue-400">Pricing</Link>
+                        <Link href="/dashboard" className="hover:text-blue-400">Dashboard</Link>
+                        <Link href="/privacy" className="hover:text-blue-400">Privacy Policy</Link>
+                    </nav>
+                    <p className="mt-8 text-gray-400">&copy; 2026 AI PPT Generator. All rights reserved.</p>
                 </div>
-              )}
-            </div>
-          </div>
+            </footer>
         </div>
-      )}
+    );
+};
 
-      {/* Fixed Bottom Button */}
-      <div className="flex-shrink-0 bg-white border-t border-gray-200 p-4">
-        <div className="container mx-auto max-w-3xl">
-          <button
-            onClick={handleSaveConfig}
-            disabled={buttonState.isDisabled}
-            className={`w-full font-semibold py-3 px-4 rounded-lg transition-all duration-500 ${buttonState.isDisabled
-              ? "bg-gray-400 cursor-not-allowed"
-              : "bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 focus:ring-4 focus:ring-blue-200"
-              } text-white`}
-          >
-            {buttonState.isLoading ? (
-              <div className="flex items-center justify-center gap-2">
-                <Loader2 className="w-4 h-4 animate-spin" />
-                {buttonState.text}
-              </div>
-            ) : (
-              buttonState.text
-            )}
-          </button>
-        </div>
-      </div>
-    </div>
-  );
-}
+// A simple Check icon component to be used in the pricing section
+const Check = ({ className }: { className: string }) => (
+    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
+        <path d="M20 6 9 17l-5-5"></path>
+    </svg>
+);
+
+export default HomePage;

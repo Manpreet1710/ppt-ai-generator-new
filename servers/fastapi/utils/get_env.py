@@ -1,6 +1,5 @@
 import os
 
-
 def get_can_change_keys_env():
     return os.getenv("CAN_CHANGE_KEYS")
 

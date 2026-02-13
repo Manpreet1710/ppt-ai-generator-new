@@ -56,7 +56,6 @@ export const metadata: Metadata = {
 };
 
 
-
 const page = () => {
   return (
     <div className="relative">

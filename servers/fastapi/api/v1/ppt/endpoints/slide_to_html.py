@@ -164,6 +164,7 @@ async def generate_html_from_slide(
         response = await model.generate_content_async([GENERATE_HTML_SYSTEM_PROMPT, user_text, image_part])
         html_content = response.text
 
+
         print(f"Received HTML content length: {len(html_content)}")
         if not html_content:
             raise HTTPException(status_code=500, detail="No HTML content generated")

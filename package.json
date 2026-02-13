@@ -5,5 +5,8 @@
   "description": "Open-source AI presentation generator",
   "devDependencies": {
     "@types/d3": "^7.4.3"
+  },
+  "dependencies": {
+    "firebase": "^12.9.0"
   }
 }

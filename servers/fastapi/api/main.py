@@ -6,22 +6,21 @@ from api.middlewares import UserConfigEnvUpdateMiddleware
 from api.v1.ppt.router import API_V1_PPT_ROUTER
 from api.v1.webhook.router import API_V1_WEBHOOK_ROUTER
 from api.v1.mock.router import API_V1_MOCK_ROUTER
-from api.v1.user_config.router import USER_CONFIG_ROUTER
+from api.v1.user_config.router import USER_CONFIG_ROUTER as user_config_router
+from api.firebase_auth_middleware import FirebaseAuthMiddleware
 
 
 app = FastAPI(lifespan=app_lifespan)
-
 
 # Routers
 app.include_router(API_V1_PPT_ROUTER)
 app.include_router(API_V1_WEBHOOK_ROUTER)
 app.include_router(API_V1_MOCK_ROUTER)
-app.include_router(USER_CONFIG_ROUTER, prefix="/api/v1")
+app.include_router(user_config_router, prefix="/api/v1")
 
 # Mount static files directories
 app.mount("/app_data", StaticFiles(directory="../app_data"), name="app_data")
 app.mount("/static", StaticFiles(directory="static"), name="static")
-
 
 # Middlewares
 origins = ["*"]
@@ -31,6 +30,12 @@ app.add_middleware(
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
+    expose_headers=["*"],
+    max_age=3600,
 )
-
+# Add Auth Middleware (before routes)
+# app.add_middleware(FirebaseAuthMiddleware)
 app.add_middleware(UserConfigEnvUpdateMiddleware)
+
+
+

@@ -193,17 +193,11 @@ class LLMToolCallsHandler:
                     + self.client.llm_provider.value
                 )
 
-    async def search_web_tool_call_handler_openai(self, arguments: str) -> str:
-        args = SearchWebTool.model_validate_json(arguments)
-        return await self.client._search_openai(args.query)
+  
 
     async def search_web_tool_call_handler_google(self, arguments: str) -> str:
         args = SearchWebTool.model_validate_json(arguments)
         return await self.client._search_google(args.query)
-
-    async def search_web_tool_call_handler_anthropic(self, arguments: str) -> str:
-        args = SearchWebTool.model_validate_json(arguments)
-        return await self.client._search_anthropic(args.query)
 
     # Get current datetime tool call handler
     async def get_current_datetime_tool_call_handler(self, _) -> str:

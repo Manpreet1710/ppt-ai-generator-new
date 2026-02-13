@@ -64,7 +64,7 @@ def get_user_config():
     if not user_config_path:
         app_data_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "app_data"))
         user_config_path = os.path.join(app_data_dir, "user_config.json")
-        print(f"USER_CONFIG_PATH not set, using default: {user_config_path}")
+        # print(f"USER_CONFIG_PATH not set, using default: {user_config_path}")
 
 
     existing_config = UserConfig()

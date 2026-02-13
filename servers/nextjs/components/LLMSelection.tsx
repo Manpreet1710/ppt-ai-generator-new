@@ -346,7 +346,7 @@ export default function LLMProviderSelection({
       </div>
 
       {/* Scrollable Content */}
-      <div className="flex-1 overflow-y-auto p-6 pt-0 custom_scrollbar">
+      <div className="d-none flex-1 overflow-y-auto p-6 pt-0 custom_scrollbar">
         <Tabs
           value={llmConfig.LLM || "openai"}
           onValueChange={handleProviderChange}

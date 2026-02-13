@@ -1,3 +1,4 @@
+import logging
 from fastapi import HTTPException
 
 from constants.llm import (
@@ -14,6 +15,8 @@ from utils.get_env import (
     get_ollama_model_env,
     get_openai_model_env,
 )
+
+logger = logging.getLogger(__name__)
 
 
 def get_llm_provider():
@@ -48,18 +51,22 @@ def is_custom_llm_selected():
 
 def get_model():
     selected_llm = get_llm_provider()
+    model = None
     if selected_llm == LLMProvider.OPENAI:
-        return get_openai_model_env() or DEFAULT_OPENAI_MODEL
+        model = get_openai_model_env() or DEFAULT_OPENAI_MODEL
     elif selected_llm == LLMProvider.GOOGLE:
-        return get_google_model_env() or DEFAULT_GOOGLE_MODEL
+        model = get_google_model_env() or DEFAULT_GOOGLE_MODEL
     elif selected_llm == LLMProvider.ANTHROPIC:
-        return get_anthropic_model_env() or DEFAULT_ANTHROPIC_MODEL
+        model = get_anthropic_model_env() or DEFAULT_ANTHROPIC_MODEL
     elif selected_llm == LLMProvider.OLLAMA:
-        return get_ollama_model_env()
+        model = get_ollama_model_env()
     elif selected_llm == LLMProvider.CUSTOM:
-        return get_custom_model_env()
+        model = get_custom_model_env()
     else:
         raise HTTPException(
             status_code=500,
             detail=f"Invalid LLM provider. Please select one of: openai, google, anthropic, ollama, custom",
         )
+    logger.info(f"Using LLM Model: {model}")
+    print(f"Using LLM Model: {model}")
+    return model
